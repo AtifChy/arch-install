@@ -99,11 +99,19 @@ reflector -c Bangladesh --save /etc/pacman.d/mirrorlist
 
 echo "Installing..."
 
-pacstrap /mnt base base-devel linux-zen linux-zen-headers linux-firmware reflector git btrfs-progs intel-ucode neovim xclip
+pacstrap /mnt base base-devel linux-zen linux-zen-headers linux-firmware reflector git btrfs-progs neovim xclip
 
 echo "DONE"
 
+echo "Generating fstab..."
 
+genfstab -U /mnt >> /mnt/etc/fstab
 
+echo "DONE"
 
+echo "Entering newly installed system..."
+
+arch-chroot /mnt
+
+echo "DONE"
 
