@@ -37,7 +37,7 @@ mkfs.ext4 -f $BOOT_disk
 #mkfs.ext4 -f -L "Archlinux" $ROOT_disk
 
 # EFI
-#mkfs.fat -F32 $EFI_disk
+mkfs.fat -F32 $EFI_disk
 
 # Home
 #mkfs.ext4 -f -L "Home" $HOME_disk
@@ -88,14 +88,21 @@ mount -o noatime,compress=zstd,nossd,space_cache,subvol=@var_cache $ROOT_disk /m
 ## end of ext4 root
 
 ## ext4 boot partition
+mount $BOOT_disk /mnt/boot
+## end of ext4 boot partition
+
+## mount EFI partition
 mkdir /mnt/boot/efi
 mount $EFI_disk /mnt/boot/efi
-## end of ext4 boot partition
+## end EFI
 
 echo "DONE"
 
 # mirror
 reflector -c Bangladesh --save /etc/pacman.d/mirrorlist
+
+echo "Press Enter to Continue..."
+read
 
 echo "Installing..."
 
@@ -113,5 +120,5 @@ echo "Entering newly installed system..."
 
 arch-chroot /mnt
 
-echo "DONE"
+echo "Reboot"
 
