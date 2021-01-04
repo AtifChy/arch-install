@@ -68,21 +68,21 @@ btrfs subvolume create /mnt/@var_cache 		# /var/cache
 umount -l /mnt
 #===> end of 1st phase
 #===> start of 2nd phase
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@ $ROOT_disk /mnt
+mount -o noatime,compress=zstd,space_cache,subvol=@ $ROOT_disk /mnt
 mkdir /mnt/{boot,home,opt,srv,var,tmp,.snapshots,swap}
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@home $ROOT_disk /mnt/home
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@opt $ROOT_disk /mnt/opt
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@srv $ROOT_disk /mnt/srv
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@var $ROOT_disk /mnt/var
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@tmp $ROOT_disk /mnt/tmp
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@snapshots $ROOT_disk /mnt/.snapshots
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@swap $ROOT_disk /mnt/swap
+mount -o noatime,compress=zstd,space_cache,subvol=@home $ROOT_disk /mnt/home
+mount -o noatime,compress=zstd,space_cache,subvol=@opt $ROOT_disk /mnt/opt
+mount -o noatime,compress=zstd,space_cache,subvol=@srv $ROOT_disk /mnt/srv
+mount -o noatime,compress=zstd,space_cache,subvol=@var $ROOT_disk /mnt/var
+mount -o noatime,compress=zstd,space_cache,subvol=@tmp $ROOT_disk /mnt/tmp
+mount -o noatime,compress=zstd,space_cache,subvol=@snapshots $ROOT_disk /mnt/.snapshots
+mount -o noatime,compress=zstd,space_cache,subvol=@swap $ROOT_disk /mnt/swap
 #
-# uncomment the follow line to mount /boot on /mnt/boot
-#mount -o noatime,compress=zstd,nossd,space_cache,subvol=@boot $ROOT_disk /mnt/boot
+# uncomment the follow line to mount @boot on /mnt/boot
+#mount -o noatime,compress=zstd,space_cache,subvol=@boot $ROOT_disk /mnt/boot
 mkdir /mnt/var/{log,cache}
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@var_log $ROOT_disk /mnt/var/log
-mount -o noatime,compress=zstd,nossd,space_cache,subvol=@var_cache $ROOT_disk /mnt/var/cache
+mount -o noatime,compress=zstd,space_cache,subvol=@var_log $ROOT_disk /mnt/var/log
+mount -o noatime,compress=zstd,space_cache,subvol=@var_cache $ROOT_disk /mnt/var/cache
 #===> end of 2nd phase
 
 ## end of btrfs
@@ -118,6 +118,19 @@ echo "Generating fstab..."
 
 genfstab -U /mnt >> /mnt/etc/fstab
 
+echo "DONE"
+
+echo "Creating swapfile for btrfs"
+arch-chroot /mnt truncate -s 0 /swap/swapfile
+arch-chroot /mnt chattr +C /swap/swapfile
+arch-chroot /mnt btrfs property set /swap/swapfile compression none
+arch-chroot /mnt dd if=/dev/zero of=/swap/swapfile bs=1G count=4 status=progress 	# increase count number if you want more swap space or decrease if you want less
+arch-chroot /mnt chmod 600 /swap/swapfile
+arch-chroot /mnt mkswap /swap/swapfile
+arch-chroot /mnt swapon /swap/swapfile
+arch-chroot /mnt echo " " >> /etc/fstab
+arch-chroot /mnt echo "# /dev/sda8 LABEL=Swapfile" >> /etc/fstab
+arch-chroot /mnt echo "/swap/swapfile 		none 		swap 		defaults 	0 0" >> /etc/fstab
 echo "DONE"
 
 echo "Entering newly installed system..."
