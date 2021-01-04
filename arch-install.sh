@@ -13,11 +13,15 @@ done
 # partition you disk using ===>[[    cfdisk   ]]<===
 # Also comment everything you don't need.
 
+export USER_install=atif 	# what's your name?
+export COUNTRY=Bangladesh 	# for mirror
+
 # partition? [e.g. ROOT_disk=/dev/sda8]
-export ROOT_disk=/dev/sda8 	#example
-export EFI_disk=/dev/sda1 	#example
-#export HOME_disk=
+export ROOT_disk=/dev/sda8 	#example; recommended size = 20GB+
+export EFI_disk=/dev/sda1 	#example; recommended size = 100MB+
+#export HOME_disk= 		# recommended size = 30GB+
 export BOOT_disk=/dev/sda7 	# Do you want separate boot partition?
+				# recommended size = 1GB+
 
 # Update the system clock
 timedatectl set-ntp true
@@ -99,7 +103,7 @@ mount $EFI_disk /mnt/boot/efi
 echo "DONE"
 
 # mirror
-reflector -c Bangladesh --save /etc/pacman.d/mirrorlist
+reflector -c $COUNTRY --save /etc/pacman.d/mirrorlist
 
 echo "Press Enter to Continue..."
 read
@@ -118,7 +122,49 @@ echo "DONE"
 
 echo "Entering newly installed system..."
 
-arch-chroot /mnt
+arch-chroot /mnt ln -sf /usr/share/zoneinfo/Asia/Dhaka /etc/localtime
+arch-chroot /mnt hwclock --systohc
+echo "Uncomment whatever locale you need"
+read
+arch-chroot /mnt nvim /etc/locale.gen
+arch-chroot /mnt locale-gen
+arch-chroot /mnt echo LANG=en_US.UTF-8 >> /etc/locale.conf
+arch-chroot /mnt echo KEYMAP=us >> /etc/vconsole.conf
+arch-chroot /mnt echo archlinux >> /etc/hostname
+arch-chroot /mnt echo "127.0.0.1	localhost" >> /etc/hosts
+arch-chroot /mnt echo "::1		localhost" >> /etc/hosts
+arch-chroot /mnt echo "127.0.1.1	archlinux.localdomain	archlinux" >> /etc/hosts
+
+echo "root passwd"
+arch-chroot /mnt passwd
+
+echo "adding a user..."
+arch-chroot /mnt usermod -mG wheel,network,audio,kvm,optical,storage,video $USER_install
+echo "password for new user"
+arch-chroot /mnt passwd atif
+echo "DONE"
+echo "Enable sudo for new user"
+arch-chroot /mnt EDITOR=nvim visudo
+
+echo "Installing some useful tools"
+arch-chroot /mnt pacman -Syu grub grub-btrfs efibootmgr networkmanager wpa_supplicant dialog os-prober mtools dosfstools openssh wget curl nano pacman-contrib bash-completion usbutils lsof dmidecode zip unzip unrar p7zip lzop rsync traceroute bind-tools ntfs-3g exfat-utils gptfdisk autofs fuse2 fuse3 fuseiso alsa-utils alsa-plugins pulseaudio pulseaudio-alsa xorg-server xorg-xinit font-bh-ttf gsfonts sdl_ttf ttf-bitstream-vera ttf-dejavu ttf-liberation xorg-fonts-type1 ttf-fire-code ttf-fira-sans ttf-hack xf86-input-libinput xf86-video-amdgpu gst-plugins-base gst-plugins-good gst-plugins-ugly gst-libav ttf-nerd-fonts-symbols ttf-jetbrains-mono --needed
+
+echo "Installing grub..."
+# EFI:
+arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Arch
+arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+arch-chroot /mnt systemctl enable NetworkManager sshd
+
+echo "Installing gnome..."
+arch-chroot /mnt pacman -Syu baobab cheese eog evince file-roller gdm gedit gnome-backgrounds gnome-calculator gnome-calendar gnome-clocks gnome-color-manager gnome-control-center gnome-disk-utility gnome-documents gnome-font-viewer gnome-getting-started-docs gnome-keyring gnome-logs gnome-menus gnome-remote-desktop gnome-screenshot gnome-session gnome-settings-daemon gnome-shell gnome-shell-extensions gnome-system-monitor gnome-terminal gnome-themes-extra gnome-user-docs gnome-user-share gnome-video-effects grilo-plugins gvfs gvfs-afc gvfs-goa gvfs-google gvfs-gphoto2 gvfs-mtp gvfs-nfs gvfs-smb mutter nautilus networkmanager orca rygel sushi tracker tracker-miners tracker3 tracker3-miners vino xdg-user-dirs-gtk yelp lollypop celluloid --needed
+
+arch-chroot /mnt systemctl enable gdm.service
+
+
+echo "Add btrfs to modules"
+read
+
+arch-chroot /mnt mkinitcpio -P
 
 echo "Reboot"
 
