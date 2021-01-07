@@ -17,10 +17,10 @@ export USER_install=atif 	# what's your name?
 export COUNTRY=Bangladesh 	# for mirror
 
 # partition? [e.g. ROOT_disk=/dev/sda8]
-export ROOT_disk=/dev/sda8 	#example; recommended size = 20GB+
+export ROOT_disk=/dev/sda7 	#example; recommended size = 20GB+
 export EFI_disk=/dev/sda1 	#example; recommended size = 100MB+
 #export HOME_disk= 		# recommended size = 30GB+
-export BOOT_disk=/dev/sda7 	# Do you want separate boot partition?
+#export BOOT_disk=/dev/sda7 	# Do you want separate boot partition?
 				# recommended size = 1GB+
 
 # Update the system clock
@@ -35,7 +35,7 @@ echo "Formating..."
 mkfs.btrfs -f -L "Archlinux" $ROOT_disk
 
 # boot partition
-mkfs.ext4 -f $BOOT_disk
+#mkfs.ext4 -q $BOOT_disk
 
 # ext4 root
 #mkfs.ext4 -f -L "Archlinux" $ROOT_disk
@@ -64,7 +64,7 @@ btrfs subvolume create /mnt/@snapshots 		# /.snapshots
 btrfs subvolume create /mnt/@swap 		# /swap
 btrfs subvolume create /mnt/@var_log 		# /var/log
 btrfs subvolume create /mnt/@var_cache 		# /var/cache
-#btrfs subvolume create /mnt/@boot 		# enable this if you want /boot as a btrfs subvolume
+btrfs subvolume create /mnt/@boot 		# enable this if you want /boot as a btrfs subvolume
 umount -l /mnt
 #===> end of 1st phase
 #===> start of 2nd phase
@@ -152,15 +152,15 @@ echo "root passwd"
 arch-chroot /mnt passwd
 
 echo "adding a user..."
-arch-chroot /mnt usermod -mG wheel,network,audio,kvm,optical,storage,video $USER_install
+arch-chroot /mnt useradd -mG wheel,network,audio,kvm,optical,storage,video $USER_install
 echo "password for new user"
-arch-chroot /mnt passwd atif
+arch-chroot /mnt passwd $USER_install
 echo "DONE"
 echo "Enable sudo for new user"
 arch-chroot /mnt EDITOR=nvim visudo
 
 echo "Installing some useful tools"
-arch-chroot /mnt pacman -Syu grub grub-btrfs efibootmgr networkmanager wpa_supplicant dialog os-prober mtools dosfstools openssh wget curl nano pacman-contrib bash-completion usbutils lsof dmidecode zip unzip unrar p7zip lzop rsync traceroute bind-tools ntfs-3g exfat-utils gptfdisk autofs fuse2 fuse3 fuseiso alsa-utils alsa-plugins pulseaudio pulseaudio-alsa xorg-server xorg-xinit font-bh-ttf gsfonts sdl_ttf ttf-bitstream-vera ttf-dejavu ttf-liberation xorg-fonts-type1 ttf-fire-code ttf-fira-sans ttf-hack xf86-input-libinput xf86-video-amdgpu gst-plugins-base gst-plugins-good gst-plugins-ugly gst-libav ttf-nerd-fonts-symbols ttf-jetbrains-mono --needed
+arch-chroot /mnt pacman -Syu grub grub-btrfs efibootmgr networkmanager wpa_supplicant dialog os-prober mtools dosfstools openssh wget curl nano pacman-contrib bash-completion usbutils lsof dmidecode zip unzip unrar p7zip lzop rsync traceroute bind-tools ntfs-3g exfat-utils gptfdisk autofs fuse2 fuse3 fuseiso alsa-utils alsa-plugins pulseaudio pulseaudio-alsa xorg-server xorg-xinit font-bh-ttf gsfonts sdl_ttf ttf-bitstream-vera ttf-dejavu ttf-liberation xorg-fonts-type1 ttf-fira-code ttf-fira-sans ttf-hack xf86-input-libinput xf86-video-amdgpu gst-plugins-base gst-plugins-good gst-plugins-ugly gst-libav ttf-nerd-fonts-symbols ttf-jetbrains-mono --needed
 
 echo "Installing grub..."
 # EFI:
