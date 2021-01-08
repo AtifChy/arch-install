@@ -42,7 +42,7 @@ mkfs.btrfs -f -L "Archlinux" $ROOT_disk
 
 # EFI
 mkfs.fat -F32 $EFI_disk
-
+fatlabel /dev/sda1 EFI
 # Home
 #mkfs.ext4 -f -L "Home" $HOME_disk
 
@@ -56,33 +56,39 @@ echo "Mounting..."
 mount $ROOT_disk /mnt
 btrfs subvolume create /mnt/@ 			# root
 btrfs subvolume create /mnt/@home 		# /home
+btrfs subvolume create /mnt/@boot 		# enable this if you want /boot as a btrfs subvolume
 btrfs subvolume create /mnt/@opt 		# /opt
 btrfs subvolume create /mnt/@srv 		# /srv
-btrfs subvolume create /mnt/@var 		# /var
 btrfs subvolume create /mnt/@tmp 		# /tmp
 btrfs subvolume create /mnt/@snapshots 		# /.snapshots
 btrfs subvolume create /mnt/@swap 		# /swap
-btrfs subvolume create /mnt/@var_log 		# /var/log
 btrfs subvolume create /mnt/@var_cache 		# /var/cache
-btrfs subvolume create /mnt/@boot 		# enable this if you want /boot as a btrfs subvolume
+btrfs subvolume create /mnt/@var_log 		# /var/log
+btrfs subvolume create /mnt/@var_tmp 		# /var/tmp
+
 umount -l /mnt
 #===> end of 1st phase
 #===> start of 2nd phase
 mount -o noatime,compress=zstd,space_cache,subvol=@ $ROOT_disk /mnt
 mkdir /mnt/{boot,home,opt,srv,var,tmp,.snapshots,swap}
 mount -o noatime,compress=zstd,space_cache,subvol=@home $ROOT_disk /mnt/home
+#
+# comment the following line if you don't want /boot in a separate subvolume
+#
+mount -o noatime,compress=zstd,space_cache,subvol=@boot $ROOT_disk /mnt/boot
+#
+#
+#
 mount -o noatime,compress=zstd,space_cache,subvol=@opt $ROOT_disk /mnt/opt
 mount -o noatime,compress=zstd,space_cache,subvol=@srv $ROOT_disk /mnt/srv
-mount -o noatime,compress=zstd,space_cache,subvol=@var $ROOT_disk /mnt/var
 mount -o noatime,compress=zstd,space_cache,subvol=@tmp $ROOT_disk /mnt/tmp
 mount -o noatime,compress=zstd,space_cache,subvol=@snapshots $ROOT_disk /mnt/.snapshots
 mount -o noatime,compress=zstd,space_cache,subvol=@swap $ROOT_disk /mnt/swap
-#
-# uncomment the follow line to mount @boot on /mnt/boot
-#mount -o noatime,compress=zstd,space_cache,subvol=@boot $ROOT_disk /mnt/boot
-mkdir /mnt/var/{log,cache}
-mount -o noatime,compress=zstd,space_cache,subvol=@var_log $ROOT_disk /mnt/var/log
+
+mkdir /mnt/var/{log,cache,tmp}
 mount -o noatime,compress=zstd,space_cache,subvol=@var_cache $ROOT_disk /mnt/var/cache
+mount -o noatime,compress=zstd,space_cache,subvol=@var_log $ROOT_disk /mnt/var/log
+mount -o noatime,compress=zstd,space_cache,subvol=@var_tmp $ROOT_disk /mnt/var/tmp
 #===> end of 2nd phase
 
 ## end of btrfs
@@ -141,9 +147,9 @@ echo "Uncomment whatever locale you need"
 read
 arch-chroot /mnt nvim /etc/locale.gen
 arch-chroot /mnt locale-gen
-arch-chroot /mnt echo LANG=en_US.UTF-8 >> /etc/locale.conf
-arch-chroot /mnt echo KEYMAP=us >> /etc/vconsole.conf
-arch-chroot /mnt echo archlinux >> /etc/hostname
+arch-chroot /mnt echo "LANG=en_US.UTF-8" >> /etc/locale.conf
+arch-chroot /mnt echo "KEYMAP=us" >> /etc/vconsole.conf
+arch-chroot /mnt echo "archlinux" >> /etc/hostname
 arch-chroot /mnt echo "127.0.0.1	localhost" >> /etc/hosts
 arch-chroot /mnt echo "::1		localhost" >> /etc/hosts
 arch-chroot /mnt echo "127.0.1.1	archlinux.localdomain	archlinux" >> /etc/hosts
@@ -168,15 +174,10 @@ arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bo
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt systemctl enable NetworkManager sshd
 
-echo "Installing gnome..."
-arch-chroot /mnt pacman -Syu baobab cheese eog evince file-roller gdm gedit gnome-backgrounds gnome-calculator gnome-calendar gnome-clocks gnome-color-manager gnome-control-center gnome-disk-utility gnome-documents gnome-font-viewer gnome-getting-started-docs gnome-keyring gnome-logs gnome-menus gnome-remote-desktop gnome-screenshot gnome-session gnome-settings-daemon gnome-shell gnome-shell-extensions gnome-system-monitor gnome-terminal gnome-themes-extra gnome-user-docs gnome-user-share gnome-video-effects grilo-plugins gvfs gvfs-afc gvfs-goa gvfs-google gvfs-gphoto2 gvfs-mtp gvfs-nfs gvfs-smb mutter nautilus networkmanager orca rygel sushi tracker tracker-miners tracker3 tracker3-miners vino xdg-user-dirs-gtk yelp lollypop celluloid --needed
-
-arch-chroot /mnt systemctl enable gdm.service
-
-
 echo "Add btrfs to modules"
 read
 
+arch-chroot /mnt nvim /etc/mkinitcpio.conf
 arch-chroot /mnt mkinitcpio -P
 
 echo "Reboot"
