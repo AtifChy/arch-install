@@ -17,10 +17,10 @@ export USER_install=atif 	# what's your name?
 export COUNTRY=Bangladesh 	# for mirror
 
 # partition? [e.g. ROOT_disk=/dev/sda8]
-export ROOT_disk=/dev/sda7 	#example; recommended size = 20GB+
+export ROOT_disk=/dev/sda9 	#example; recommended size = 20GB+
 export EFI_disk=/dev/sda1 	#example; recommended size = 100MB+
 #export HOME_disk= 		# recommended size = 30GB+
-#export BOOT_disk=/dev/sda7 	# Do you want separate boot partition?
+export BOOT_disk=/dev/sda8 	# Do you want separate boot partition?
 				# recommended size = 1GB+
 
 # Update the system clock
@@ -35,7 +35,7 @@ echo "Formating..."
 mkfs.btrfs -f -L "Archlinux" $ROOT_disk
 
 # boot partition
-#mkfs.ext4 -q $BOOT_disk
+mkfs.ext4 -L "Boot" $BOOT_disk
 
 # ext4 root
 #mkfs.ext4 -f -L "Archlinux" $ROOT_disk
@@ -56,15 +56,15 @@ echo "Mounting..."
 mount $ROOT_disk /mnt
 btrfs subvolume create /mnt/@ 			# root
 btrfs subvolume create /mnt/@home 		# /home
-btrfs subvolume create /mnt/@boot 		# enable this if you want /boot as a btrfs subvolume
+#btrfs subvolume create /mnt/@boot 		# enable this if you want /boot as a btrfs subvolume
 btrfs subvolume create /mnt/@opt 		# /opt
 btrfs subvolume create /mnt/@srv 		# /srv
-btrfs subvolume create /mnt/@tmp 		# /tmp
+#btrfs subvolume create /mnt/@tmp 		# /tmp
 btrfs subvolume create /mnt/@snapshots 		# /.snapshots
 btrfs subvolume create /mnt/@swap 		# /swap
 btrfs subvolume create /mnt/@var_cache 		# /var/cache
 btrfs subvolume create /mnt/@var_log 		# /var/log
-btrfs subvolume create /mnt/@var_tmp 		# /var/tmp
+#btrfs subvolume create /mnt/@var_tmp 		# /var/tmp
 
 umount -l /mnt
 #===> end of 1st phase
@@ -89,6 +89,11 @@ mkdir /mnt/var/{log,cache,tmp}
 mount -o noatime,compress=zstd,space_cache,subvol=@var_cache $ROOT_disk /mnt/var/cache
 mount -o noatime,compress=zstd,space_cache,subvol=@var_log $ROOT_disk /mnt/var/log
 mount -o noatime,compress=zstd,space_cache,subvol=@var_tmp $ROOT_disk /mnt/var/tmp
+
+# disable CoW (Copy on Write)?
+chattr +C /mnt/home
+chattr +C /mnt/var/log
+chattr +C /mnt/var/cache
 #===> end of 2nd phase
 
 ## end of btrfs
@@ -135,7 +140,6 @@ arch-chroot /mnt chmod 600 /swap/swapfile
 arch-chroot /mnt mkswap /swap/swapfile
 arch-chroot /mnt swapon /swap/swapfile
 arch-chroot /mnt echo " " >> /etc/fstab
-arch-chroot /mnt echo "# /dev/sda8 LABEL=Swapfile" >> /etc/fstab
 arch-chroot /mnt echo "/swap/swapfile 		none 		swap 		defaults 	0 0" >> /etc/fstab
 echo "DONE"
 
