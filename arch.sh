@@ -63,7 +63,7 @@ if [ $FILE_SYSTEM = btrfs ]; then
     mount -o noatime,compress=zstd,space_cache,subvol=@ $root_disk /mnt
     #
     # create necessary directorys for mounting btrfs subvolume
-    mkdir /mnt/{boot,home,opt,srv,var,tmp,.snapshots}
+    mkdir /mnt/{boot,home,opt,srv,var,tmp}
     if [ -z $home_disk ]; then
         mount -o noatime,compress=zstd,space_cache,subvol=@home $root_disk /mnt/home
     fi
@@ -75,7 +75,7 @@ if [ $FILE_SYSTEM = btrfs ]; then
     mount -o noatime,compress=zstd,space_cache,subvol=@opt $root_disk /mnt/opt
     mount -o noatime,compress=zstd,space_cache,subvol=@srv $root_disk /mnt/srv
     #mount -o noatime,compress=zstd,space_cache,subvol=@tmp $root_disk /mnt/tmp
-    mount -o noatime,compress=zstd,space_cache,subvol=@snapshots $root_disk /mnt/.snapshots
+    #mount -o noatime,compress=zstd,space_cache,subvol=@snapshots $root_disk /mnt/.snapshots
     #mount -o noatime,compress=zstd,space_cache,subvol=@swap $root_disk /mnt/swap
 
     mkdir /mnt/var/{log,cache,tmp}
@@ -150,14 +150,14 @@ echo "password for new user"
 arch-chroot /mnt passwd $user_name
 echo "DONE"
 echo "Enable sudo for new user"
-arch-chroot /mnt EDITOR=nvim visudo
+arch-chroot /mnt sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
 
 echo "Installing some useful tools"
 arch-chroot /mnt pacman -Syu --noconfirm grub grub-btrfs efibootmgr networkmanager wpa_supplicant dialog os-prober mtools dosfstools openssh wget curl nano pacman-contrib bash-completion usbutils lsof dmidecode zip unzip unrar p7zip lzop rsync traceroute bind-tools ntfs-3g exfat-utils gptfdisk autofs fuse2 fuse3 fuseiso alsa-utils alsa-plugins pulseaudio pulseaudio-alsa xorg-server xorg-xinit font-bh-ttf gsfonts sdl_ttf ttf-bitstream-vera ttf-dejavu ttf-liberation xorg-fonts-type1 ttf-fira-code ttf-fira-sans ttf-hack xf86-input-libinput xf86-video-amdgpu gst-plugins-base gst-plugins-good gst-plugins-ugly gst-libav ttf-nerd-fonts-symbols ttf-jetbrains-mono --needed
 
 echo "Installing grub..."
 # EFI:
-arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Arch
+arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt systemctl enable NetworkManager sshd
 
