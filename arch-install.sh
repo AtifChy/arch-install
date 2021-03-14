@@ -13,36 +13,39 @@ done
 # partition you disk using ===>[[    cfdisk   ]]<===
 # Also comment everything you don't need.
 
-export USER_install=atif 	# what's your name?
-export COUNTRY=Bangladesh 	# for mirror
+USER_install=atif 	# what's your name?
+COUNTRY=Bangladesh 	# for mirror
 
 # partition? [e.g. ROOT_disk=/dev/sda8]
-export ROOT_disk=/dev/sda9 	#example; recommended size = 20GB+
-export EFI_disk=/dev/sda1 	#example; recommended size = 100MB+
+ROOT_disk=/dev/sda9 	#example; recommended size = 20GB+
+EFI_disk=/dev/sda1 	    #example; recommended size = 100MB+
 #export HOME_disk= 		# recommended size = 30GB+
-export BOOT_disk=/dev/sda8 	# Do you want separate boot partition?
-				# recommended size = 1GB+
+#BOOT_disk=/dev/sda8 	# Do you want separate boot partition?
+				        # recommended size = 1GB+
 
 # Update the system clock
 timedatectl set-ntp true
 
 # list of disks
 lsblk
-
+###########################################################
+##############           Formating          ###############
+###########################################################
 echo "Formating..."
 
 ## btrfs root
 mkfs.btrfs -f -L "Archlinux" $ROOT_disk
 
 # boot partition
-mkfs.ext4 -L "Boot" $BOOT_disk
+#mkfs.ext4 -L "Boot" $BOOT_disk
 
 # ext4 root
 #mkfs.ext4 -f -L "Archlinux" $ROOT_disk
 
 # EFI
 mkfs.fat -F32 $EFI_disk
-fatlabel /dev/sda1 EFI
+#fatlabel /dev/sda1 EFI
+
 # Home
 #mkfs.ext4 -f -L "Home" $HOME_disk
 
@@ -50,6 +53,9 @@ echo "DONE"
 
 echo "Mounting..."
 
+###########################################################
+##############    Create btrfs Subvolume    ###############
+###########################################################
 ## btrfs
 # btrfs subvolume creationn
 #===> start of 1st phase
@@ -61,16 +67,21 @@ btrfs subvolume create /mnt/@opt 		# /opt
 btrfs subvolume create /mnt/@srv 		# /srv
 #btrfs subvolume create /mnt/@tmp 		# /tmp
 btrfs subvolume create /mnt/@snapshots 		# /.snapshots
-btrfs subvolume create /mnt/@swap 		# /swap
+#btrfs subvolume create /mnt/@swap 		# /swap
 btrfs subvolume create /mnt/@var_cache 		# /var/cache
 btrfs subvolume create /mnt/@var_log 		# /var/log
-#btrfs subvolume create /mnt/@var_tmp 		# /var/tmp
+#btrfs subvolume create /mnt/@var_tmp 		# /var/tmp      # NOT Recommended
 
 umount -l /mnt
 #===> end of 1st phase
 #===> start of 2nd phase
+###########################################################
+##############           Mounting           ###############
+###########################################################
 mount -o noatime,compress=zstd,space_cache,subvol=@ $ROOT_disk /mnt
-mkdir /mnt/{boot,home,opt,srv,var,tmp,.snapshots,swap}
+#
+# create necessary directorys for mounting btrfs subvolume
+mkdir /mnt/{boot,home,opt,srv,var,tmp,.snapshots}
 mount -o noatime,compress=zstd,space_cache,subvol=@home $ROOT_disk /mnt/home
 #
 # comment the following line if you don't want /boot in a separate subvolume
@@ -81,9 +92,9 @@ mount -o noatime,compress=zstd,space_cache,subvol=@boot $ROOT_disk /mnt/boot
 #
 mount -o noatime,compress=zstd,space_cache,subvol=@opt $ROOT_disk /mnt/opt
 mount -o noatime,compress=zstd,space_cache,subvol=@srv $ROOT_disk /mnt/srv
-mount -o noatime,compress=zstd,space_cache,subvol=@tmp $ROOT_disk /mnt/tmp
+#mount -o noatime,compress=zstd,space_cache,subvol=@tmp $ROOT_disk /mnt/tmp
 mount -o noatime,compress=zstd,space_cache,subvol=@snapshots $ROOT_disk /mnt/.snapshots
-mount -o noatime,compress=zstd,space_cache,subvol=@swap $ROOT_disk /mnt/swap
+#mount -o noatime,compress=zstd,space_cache,subvol=@swap $ROOT_disk /mnt/swap
 
 mkdir /mnt/var/{log,cache,tmp}
 mount -o noatime,compress=zstd,space_cache,subvol=@var_cache $ROOT_disk /mnt/var/cache
@@ -94,6 +105,7 @@ mount -o noatime,compress=zstd,space_cache,subvol=@var_tmp $ROOT_disk /mnt/var/t
 chattr +C /mnt/home
 chattr +C /mnt/var/log
 chattr +C /mnt/var/cache
+chattr +C /mnt/var/tmp
 #===> end of 2nd phase
 
 ## end of btrfs
@@ -103,12 +115,12 @@ chattr +C /mnt/var/cache
 ## end of ext4 root
 
 ## ext4 boot partition
-mount $BOOT_disk /mnt/boot
+#mount $BOOT_disk /mnt/boot
 ## end of ext4 boot partition
 
 ## mount EFI partition
-mkdir /mnt/boot/efi
-mount $EFI_disk /mnt/boot/efi
+mkdir /mnt/boot
+mount $EFI_disk /mnt/boot
 ## end EFI
 
 echo "DONE"
