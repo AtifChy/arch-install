@@ -36,11 +36,6 @@ select file_system in "btrfs" "ext4"; do
     esac
 done
 
-mkfs.fat -F32 $efi_disk
-if [ ! -z $home_disk ]; then
-    mkfs.ext4 -L "Home" $home_disk
-fi
-
 if [ $FILE_SYSTEM = btrfs ]; then
     mkfs.btrfs -f -L "Archlinux" $root_disk
 
@@ -101,3 +96,75 @@ if [ $FILE_SYSTEM = ext4 ]; then
     mkfs.ext4 -f -L "Archlinux" $root_disk
     mount $root_disk /mnt
 fi
+
+if [ ! -z $home_disk ]; then
+    mkfs.ext4 -L "Home" $home_disk
+    mkdir /mnt/home
+    mount $home_disk /mnt/home
+fi
+
+mkfs.fat -F32 $efi_disk
+mount $efi_disk /mnt/boot
+
+###########################################################
+##############            Mirror            ###############
+###########################################################
+reflector -c $country --save /etc/pacman.d/mirrorlist
+
+echo "Starting Installation. Press Enter to Continue..."
+read
+
+echo "Installing..."
+
+pacstrap /mnt base base-devel linux-zen linux-zen-headers linux-firmware reflector git btrfs-progs neovim xclip
+
+echo "DONE"
+
+echo "Generating fstab..."
+
+genfstab -U /mnt >> /mnt/etc/fstab
+
+echo "DONE"
+
+echo "Entering newly installed system..."
+
+arch-chroot /mnt ln -sf /usr/share/zoneinfo/Asia/Dhaka /etc/localtime
+arch-chroot /mnt hwclock --systohc
+echo "Uncomment whatever locale you need"
+read
+arch-chroot /mnt nvim /etc/locale.gen
+arch-chroot /mnt locale-gen
+arch-chroot /mnt echo "LANG=en_US.UTF-8" >> /etc/locale.conf
+arch-chroot /mnt echo "KEYMAP=us" >> /etc/vconsole.conf
+arch-chroot /mnt echo "archlinux" >> /etc/hostname
+arch-chroot /mnt echo "127.0.0.1    localhost" >> /etc/hosts
+arch-chroot /mnt echo "::1          localhost" >> /etc/hosts
+arch-chroot /mnt echo "127.0.1.1    archlinux.localdomain   archlinux" >> /etc/hosts
+
+echo "root passwd"
+arch-chroot /mnt passwd
+
+echo "adding a user..."
+arch-chroot /mnt useradd -mG wheel,network,audio,kvm,optical,storage,video $user_name
+echo "password for new user"
+arch-chroot /mnt passwd $user_name
+echo "DONE"
+echo "Enable sudo for new user"
+arch-chroot /mnt EDITOR=nvim visudo
+
+echo "Installing some useful tools"
+arch-chroot /mnt pacman -Syu --noconfirm grub grub-btrfs efibootmgr networkmanager wpa_supplicant dialog os-prober mtools dosfstools openssh wget curl nano pacman-contrib bash-completion usbutils lsof dmidecode zip unzip unrar p7zip lzop rsync traceroute bind-tools ntfs-3g exfat-utils gptfdisk autofs fuse2 fuse3 fuseiso alsa-utils alsa-plugins pulseaudio pulseaudio-alsa xorg-server xorg-xinit font-bh-ttf gsfonts sdl_ttf ttf-bitstream-vera ttf-dejavu ttf-liberation xorg-fonts-type1 ttf-fira-code ttf-fira-sans ttf-hack xf86-input-libinput xf86-video-amdgpu gst-plugins-base gst-plugins-good gst-plugins-ugly gst-libav ttf-nerd-fonts-symbols ttf-jetbrains-mono --needed
+
+echo "Installing grub..."
+# EFI:
+arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=Arch
+arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+arch-chroot /mnt systemctl enable NetworkManager sshd
+
+echo "Add btrfs to modules"
+read
+
+arch-chroot /mnt nvim /etc/mkinitcpio.conf
+arch-chroot /mnt mkinitcpio -P
+
+echo "Reboot"
