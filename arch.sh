@@ -1,17 +1,21 @@
 #!/bin/bash
-read -p "Do you wish to install this program? [y/n] " input
+printf "Do you wish to install this program? [y/n] "
+read -r input
 case $input in
 [Yy]*) neofetch ;;
 [Nn]*) exit ;;
 *) echo "Please answer yes or no." ;;
 esac
 
-read -p "user name = " user_name
-echo hi, $user_name
+printf "user name = "
+read -r user_name
+echo hi, "$user_name"
 
-read -p "country (for mirror) =  " country
+printf "country (for mirror) =  "
+read -r country
 
-read -p "Do you wish to create new partitions? " partition
+printf "Do you wish to create new partitions? "
+read -r partition
 case $partition in
 [Yy]*) cfdisk ;;
 [Nn]*) echo 'skipping' ;;
@@ -22,11 +26,17 @@ case $partition in
 esac
 
 lsblk
-read -p "root partition [e.g. /dev/sda8] = " root_disk
-read -p "efi partition [e.g. /dev/sda7] = " efi_disk
-read -p "Do you want to create home partition? [y/n] " home_ask
+printf "root partition [e.g. /dev/sda8] = "
+read -r root_disk
+printf "efi partition [e.g. /dev/sda7] = "
+read -r efi_disk
+printf "Do you want to create home partition? [y/n] "
+read -r home_ask
 case $home_ask in
-[Yy]*) read -p "home partition [e.g. /dev/sda6] = " home_disk ;;
+[Yy]*)
+	printf "home partition [e.g. /dev/sda6] = "
+	read -r home_disk
+	;;
 [Nn]*) echo 'skipping' ;;
 *) echo 'skipping' ;;
 esac
@@ -46,12 +56,12 @@ select file_system in "btrfs" "ext4"; do
 done
 
 if [ $FILE_SYSTEM = btrfs ]; then
-	mkfs.btrfs -f -L "Archlinux" $root_disk
+	mkfs.btrfs -f -L "Archlinux" "$root_disk"
 
 	###########################################################
 	##############    Create btrfs Subvolume    ###############
 	###########################################################
-	mount $root_disk /mnt
+	mount "$root_disk" /mnt
 	btrfs subvolume create /mnt/@     # root
 	btrfs subvolume create /mnt/@home # /home
 	#btrfs subvolume create /mnt/@boot 		    # enable this if you want /boot as a btrfs subvolume
@@ -69,31 +79,31 @@ if [ $FILE_SYSTEM = btrfs ]; then
 	###########################################################
 	##############           Mounting           ###############
 	###########################################################
-	mount -o noatime,compress=zstd,space_cache,subvol=@ $root_disk /mnt
+	mount -o noatime,compress=zstd,space_cache=v2,subvol=@ "$root_disk" /mnt
 	#
 	# create necessary directorys for mounting btrfs subvolume
 	mkdir /mnt/{boot,home,opt,srv,var,tmp}
-	if [ -z $home_disk ]; then
-		mount -o noatime,compress=zstd,space_cache,subvol=@home $root_disk /mnt/home
+	if [ -z "$home_disk" ]; then
+		mount -o noatime,compress=zstd,space_cache=v2,subvol=@home "$root_disk" /mnt/home
 	fi
 	#
 	# comment the following line if you don't want /boot in a separate subvolume
 	#
-	#mount -o noatime,compress=zstd,space_cache,subvol=@boot $root_disk /mnt/boot
+	#mount -o noatime,compress=zstd,space_cache=v2,subvol=@boot $root_disk /mnt/boot
 	#
-	mount -o noatime,compress=zstd,space_cache,subvol=@opt $root_disk /mnt/opt
-	mount -o noatime,compress=zstd,space_cache,subvol=@srv $root_disk /mnt/srv
-	#mount -o noatime,compress=zstd,space_cache,subvol=@tmp $root_disk /mnt/tmp
-	#mount -o noatime,compress=zstd,space_cache,subvol=@snapshots $root_disk /mnt/.snapshots
-	#mount -o noatime,compress=zstd,space_cache,subvol=@swap $root_disk /mnt/swap
+	mount -o noatime,compress=zstd,space_cache=v2,subvol=@opt "$root_disk" /mnt/opt
+	mount -o noatime,compress=zstd,space_cache=v2,subvol=@srv "$root_disk" /mnt/srv
+	#mount -o noatime,compress=zstd,space_cache=v2,subvol=@tmp $root_disk /mnt/tmp
+	#mount -o noatime,compress=zstd,space_cache=v2,subvol=@snapshots $root_disk /mnt/.snapshots
+	#mount -o noatime,compress=zstd,space_cache=v2,subvol=@swap $root_disk /mnt/swap
 
 	mkdir /mnt/var/{log,cache,tmp}
-	mount -o noatime,compress=zstd,space_cache,subvol=@var_cache $root_disk /mnt/var/cache
-	mount -o noatime,compress=zstd,space_cache,subvol=@var_log $root_disk /mnt/var/log
-	mount -o noatime,compress=zstd,space_cache,subvol=@var_tmp $root_disk /mnt/var/tmp
+	mount -o noatime,compress=zstd,space_cache=v2,subvol=@var_cache "$root_disk" /mnt/var/cache
+	mount -o noatime,compress=zstd,space_cache=v2,subvol=@var_log "$root_disk" /mnt/var/log
+	mount -o noatime,compress=zstd,space_cache=v2,subvol=@var_tmp "$root_disk" /mnt/var/tmp
 
 	# disable CoW (Copy on Write)?
-	if [ -z $home_disk ]; then
+	if [ -z "$home_disk" ]; then
 		chattr +C /mnt/home
 	fi
 	chattr +C /mnt/var/log
@@ -102,26 +112,26 @@ if [ $FILE_SYSTEM = btrfs ]; then
 fi
 
 if [ $FILE_SYSTEM = ext4 ]; then
-	mkfs.ext4 -f -L "Archlinux" $root_disk
-	mount $root_disk /mnt
+	mkfs.ext4 -f -L "Archlinux" "$root_disk"
+	mount "$root_disk" /mnt
 fi
 
-if [ ! -z $home_disk ]; then
-	mkfs.ext4 -L "Home" $home_disk
+if [ -n "$home_disk" ]; then
+	mkfs.ext4 -L "Home" "$home_disk"
 	mkdir /mnt/home
-	mount $home_disk /mnt/home
+	mount "$home_disk" /mnt/home
 fi
 
-mkfs.fat -F32 $efi_disk
-mount $efi_disk /mnt/boot
+mkfs.fat -F32 "$efi_disk"
+mount "$efi_disk" /mnt/boot
 
 ###########################################################
 ##############            Mirror            ###############
 ###########################################################
-reflector -c $country --save /etc/pacman.d/mirrorlist
+reflector -c "$country" --save /etc/pacman.d/mirrorlist
 
 echo "Starting Installation. Press Enter to Continue..."
-read
+read -r
 
 echo "Installing..."
 
@@ -140,23 +150,25 @@ echo "Entering newly installed system..."
 arch-chroot /mnt ln -sf /usr/share/zoneinfo/Asia/Dhaka /etc/localtime
 arch-chroot /mnt hwclock --systohc
 echo "Uncomment whatever locale you need"
-read
+read -r
 arch-chroot /mnt nvim /etc/locale.gen
 arch-chroot /mnt locale-gen
 arch-chroot /mnt echo "LANG=en_US.UTF-8" >>/etc/locale.conf
 arch-chroot /mnt echo "KEYMAP=us" >>/etc/vconsole.conf
 arch-chroot /mnt echo "archlinux" >>/etc/hostname
-arch-chroot /mnt echo "127.0.0.1    localhost" >>/etc/hosts
-arch-chroot /mnt echo "::1          localhost" >>/etc/hosts
-arch-chroot /mnt echo "127.0.1.1    archlinux.localdomain   archlinux" >>/etc/hosts
+arch-chroot /mnt cat <<EOF >>/etc/hosts
+127.0.0.1    localhost
+127.0.0.1    localhost
+127.0.1.1    archlinux.localdomain   archlinux
+EOF
 
 echo "root passwd"
 arch-chroot /mnt passwd
 
 echo "adding a user..."
-arch-chroot /mnt useradd -mG wheel,network,audio,kvm,optical,storage,video $user_name
+arch-chroot /mnt useradd -mG wheel,network,audio,kvm,optical,storage,video "$user_name"
 echo "password for new user"
-arch-chroot /mnt passwd $user_name
+arch-chroot /mnt passwd "$user_name"
 echo "DONE"
 echo "Enable sudo for new user"
 arch-chroot /mnt sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
@@ -207,7 +219,7 @@ done
 arch-chroot /mnt systemctl enable NetworkManager sshd
 
 echo "Add btrfs to modules"
-read
+read -r
 
 arch-chroot /mnt nvim /etc/mkinitcpio.conf
 arch-chroot /mnt mkinitcpio -P
