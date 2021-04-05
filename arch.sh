@@ -2,19 +2,22 @@
 printf "Do you wish to install this program? [y/n] "
 read -r input
 case $input in
-[Yy]*) neofetch ;;
+[Yy]*) echo "Ok, Let's continue" ;;
 [Nn]*) exit ;;
 *) echo "Please answer yes or no." ;;
 esac
 
-printf "user name = "
+printf "user name (lower case) = "
 read -r user_name
 echo hi, "$user_name"
 
-printf "country (for mirror) =  "
+printf "country (for mirror) [e.g. Bangladesh] = "
 read -r country
 
-printf "Do you wish to create new partitions? "
+printf "time zome [e.g. Asia/Dhaka] = "
+read -r time_zone
+
+printf "Do you wish to create new partitions? [y/n] "
 read -r partition
 case $partition in
 [Yy]*) cfdisk ;;
@@ -30,26 +33,31 @@ printf "root partition [e.g. /dev/sda8] = "
 read -r root_disk
 printf "efi partition [e.g. /dev/sda7] = "
 read -r efi_disk
-printf "Do you want to create home partition? [y/n] "
-read -r home_ask
-case $home_ask in
-[Yy]*)
-	printf "home partition [e.g. /dev/sda6] = "
-	read -r home_disk
-	;;
-[Nn]*) echo 'skipping' ;;
-*) echo 'skipping' ;;
-esac
 
 echo "Which file system do you want to use?"
 select file_system in "btrfs" "ext4"; do
 	case $file_system in
 	btrfs)
 		FILE_SYSTEM=btrfs
+		printf "do want to make /boot a subvolume?(NOT RECOMMENDED) [y/n] "
+		read -r boot_sub
+		case $boot_sub in
+		[Yy]*) BOOT_SUBVOL=true ;;
+		*) BOOT_SUBVOL=false ;;
+		esac
 		break
 		;;
 	ext4)
 		FILE_SYSTEM=ext4
+		printf "Do you want to create home partition? [y/n] "
+		read -r home_ask
+		case $home_ask in
+		[Yy]*)
+			printf "home partition [e.g. /dev/sda6] = "
+			read -r home_disk
+			;;
+		*) echo 'skipping' ;;
+		esac
 		break
 		;;
 	esac
@@ -64,7 +72,9 @@ if [ $FILE_SYSTEM = btrfs ]; then
 	mount "$root_disk" /mnt
 	btrfs subvolume create /mnt/@     # root
 	btrfs subvolume create /mnt/@home # /home
-	#btrfs subvolume create /mnt/@boot 		    # enable this if you want /boot as a btrfs subvolume
+	if [ $BOOT_SUBVOL = true ]; then
+		btrfs subvolume create /mnt/@boot
+	fi
 	btrfs subvolume create /mnt/@opt # /opt
 	btrfs subvolume create /mnt/@srv # /srv
 	#btrfs subvolume create /mnt/@tmp 		    # /tmp  # NOT Recommended
@@ -86,11 +96,9 @@ if [ $FILE_SYSTEM = btrfs ]; then
 	if [ -z "$home_disk" ]; then
 		mount -o noatime,compress=zstd,space_cache=v2,subvol=@home "$root_disk" /mnt/home
 	fi
-	#
-	# comment the following line if you don't want /boot in a separate subvolume
-	#
-	#mount -o noatime,compress=zstd,space_cache=v2,subvol=@boot $root_disk /mnt/boot
-	#
+	if [ $BOOT_SUBVOL = true ]; then
+		mount -o noatime,compress=zstd,space_cache=v2,subvol=@boot "$root_disk" /mnt/boot
+	fi
 	mount -o noatime,compress=zstd,space_cache=v2,subvol=@opt "$root_disk" /mnt/opt
 	mount -o noatime,compress=zstd,space_cache=v2,subvol=@srv "$root_disk" /mnt/srv
 	#mount -o noatime,compress=zstd,space_cache=v2,subvol=@tmp $root_disk /mnt/tmp
@@ -116,7 +124,7 @@ if [ $FILE_SYSTEM = ext4 ]; then
 	mount "$root_disk" /mnt
 fi
 
-if [ -n "$home_disk" ]; then
+if [ "$home_disk" ]; then
 	mkfs.ext4 -L "Home" "$home_disk"
 	mkdir /mnt/home
 	mount "$home_disk" /mnt/home
@@ -134,20 +142,15 @@ echo "Starting Installation. Press Enter to Continue..."
 read -r
 
 echo "Installing..."
-
 pacstrap /mnt base base-devel linux-zen linux-zen-headers linux-firmware reflector git btrfs-progs neovim xclip
-
 echo "DONE"
 
 echo "Generating fstab..."
-
 genfstab -U /mnt >>/mnt/etc/fstab
-
 echo "DONE"
 
 echo "Entering newly installed system..."
-
-arch-chroot /mnt ln -sf /usr/share/zoneinfo/Asia/Dhaka /etc/localtime
+arch-chroot /mnt ln -sf /usr/share/zoneinfo/"$time_zone" /etc/localtime
 arch-chroot /mnt hwclock --systohc
 echo "Uncomment whatever locale you need"
 read -r
@@ -176,6 +179,9 @@ arch-chroot /mnt sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
 echo "Installing some useful tools"
 arch-chroot /mnt pacman -Syu --noconfirm efibootmgr networkmanager wpa_supplicant dialog mtools dosfstools openssh wget curl nano pacman-contrib bash-completion usbutils lsof dmidecode zip unzip unrar p7zip lzop rsync traceroute bind-tools ntfs-3g exfat-utils gptfdisk autofs fuse2 fuse3 fuseiso alsa-utils alsa-plugins pulseaudio pulseaudio-alsa xorg-server xorg-xinit font-bh-ttf gsfonts sdl_ttf ttf-bitstream-vera ttf-dejavu ttf-liberation xorg-fonts-type1 ttf-fira-code ttf-fira-sans ttf-hack xf86-input-libinput xf86-video-amdgpu gst-plugins-base gst-plugins-good gst-plugins-ugly gst-libav ttf-nerd-fonts-symbols ttf-jetbrains-mono --needed
 
+###########################################################
+##############          Bootloader          ###############
+###########################################################
 echo "Choose your bootloader"
 select file_system in "systemd-boot" "grub"; do
 	case $file_system in
